@@ -70,3 +70,15 @@ def build_token_response(user: User) -> TokenResponse:
         expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         user=UserResponse.model_validate(user),
     )
+
+
+def reset_password(db: Session, email: str, new_password: str) -> User:
+    user = get_user_by_email(db, email)
+    if user is None:
+        raise AppError("No account found with this email address.", status_code=404, code="user_not_found")
+    if not user.is_active:
+        raise AppError("This account has been disabled.", status_code=403, code="account_disabled")
+    user.password_hash = hash_password(new_password)
+    db.commit()
+    db.refresh(user)
+    return user

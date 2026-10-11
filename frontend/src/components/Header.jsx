@@ -1,12 +1,12 @@
 import React from "react";
-import { Sparkles, Briefcase, LayoutDashboard, Columns, FileText, Mail, MessageSquare, LogIn, LogOut, User, Sun, Moon } from "lucide-react";
+import { Sparkles, Briefcase, LayoutDashboard, Columns, Mail, MessageSquare, LogIn, LogOut, User, Sun, Moon } from "lucide-react";
 
 export function Header({ activeTab, setActiveTab, user, onOpenAuth, onLogout, theme, onToggleTheme }) {
   const tabs = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
     { id: "jobs", label: "Internship Finder", icon: Briefcase },
     { id: "kanban", label: "Application Tracker", icon: Columns },
-    { id: "resume", label: "Resume Studio", icon: FileText },
+    { id: "profile", label: "Profile", icon: User },
     { id: "generator", label: "Cover & Cold Email", icon: Mail },
     { id: "interview", label: "Interview Prep", icon: MessageSquare },
   ];
@@ -56,7 +56,7 @@ export function Header({ activeTab, setActiveTab, user, onOpenAuth, onLogout, th
         <nav style={{ display: "flex", alignItems: "center", gap: "6px" }}>
           {tabs.map((t) => {
             const Icon = t.icon;
-            const isActive = activeTab === t.id;
+            const isActive = activeTab === t.id || (t.id === "profile" && activeTab === "resume");
             return (
               <button
                 key={t.id}
@@ -98,18 +98,26 @@ export function Header({ activeTab, setActiveTab, user, onOpenAuth, onLogout, th
           </button>
           {user ? (
             <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-              <div style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                background: "rgba(255, 255, 255, 0.05)",
-                padding: "6px 14px",
-                borderRadius: "20px",
-                border: "1px solid var(--border-color)"
-              }}>
+              <button
+                type="button"
+                onClick={() => setActiveTab("profile")}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  background: "rgba(255, 255, 255, 0.05)",
+                  padding: "6px 14px",
+                  borderRadius: "20px",
+                  border: "1px solid var(--border-color)",
+                  cursor: "pointer",
+                  color: "inherit",
+                  fontFamily: "inherit"
+                }}
+                title="View Profile & Update Resume"
+              >
                 <User size={16} color="var(--primary-cyan)" />
                 <span style={{ fontSize: "0.85rem", fontWeight: "600" }}>{user.full_name || user.email}</span>
-              </div>
+              </button>
               <button onClick={onLogout} className="btn-secondary" style={{ padding: "8px 12px" }} title="Log out">
                 <LogOut size={16} />
               </button>

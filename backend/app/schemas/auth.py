@@ -36,3 +36,17 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
     expires_in: int  # seconds
     user: UserResponse
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr = Field(examples=["student@gmail.com"])
+    new_password: str = Field(min_length=8, max_length=72, examples=["NewStrong123"])
+
+    @field_validator("new_password")
+    @classmethod
+    def check_password(cls, value: str) -> str:
+        if len(value.encode("utf-8")) > 72:
+            raise ValueError("Password must be at most 72 bytes long.")
+        if not any(c.isalpha() for c in value) or not any(c.isdigit() for c in value):
+            raise ValueError("Password must contain at least one letter and one number.")
+        return value

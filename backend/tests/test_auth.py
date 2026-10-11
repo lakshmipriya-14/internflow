@@ -132,3 +132,47 @@ def test_password_hashing_roundtrip():
     assert hashed != "Strong123"
     assert verify_password("Strong123", hashed)
     assert not verify_password("Wrong123", hashed)
+
+
+# ---------- Forgot Password ----------
+
+def test_forgot_password_success(client, registered_user):
+    # Reset password
+    res = client.post("/auth/forgot-password", json={
+        "email": USER["email"],
+        "new_password": "NewStrongPass99"
+    })
+    assert res.status_code == 200
+    assert "successfully" in res.json()["message"]
+
+    # Old password no longer works
+    old_login = client.post("/auth/login", json={
+        "email": USER["email"],
+        "password": USER["password"]
+    })
+    assert old_login.status_code == 401
+
+    # New password works
+    new_login = client.post("/auth/login", json={
+        "email": USER["email"],
+        "password": "NewStrongPass99"
+    })
+    assert new_login.status_code == 200
+    assert new_login.json()["access_token"]
+
+
+def test_forgot_password_unknown_email(client):
+    res = client.post("/auth/forgot-password", json={
+        "email": "notfound@example.com",
+        "new_password": "NewStrongPass99"
+    })
+    assert res.status_code == 404
+    assert res.json()["error"]["code"] == "user_not_found"
+
+
+def test_forgot_password_weak_password_rejected(client, registered_user):
+    res = client.post("/auth/forgot-password", json={
+        "email": USER["email"],
+        "new_password": "weak"
+    })
+    assert res.status_code == 422

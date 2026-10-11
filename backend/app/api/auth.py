@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends
 from fastapi.security import OAuth2PasswordRequestForm
 
 from app.core.deps import CurrentUser, DbSession
-from app.schemas.auth import LoginRequest, RegisterRequest, TokenResponse
+from app.schemas.auth import ForgotPasswordRequest, LoginRequest, RegisterRequest, TokenResponse
 from app.schemas.user import UserResponse
 from app.services import auth_service
 
@@ -22,6 +22,13 @@ def login(payload: LoginRequest, db: DbSession):
     """Log in with JSON (email + password). Used by the React app."""
     user = auth_service.authenticate_user(db, payload.email, payload.password)
     return auth_service.build_token_response(user)
+
+
+@router.post("/forgot-password")
+def forgot_password(payload: ForgotPasswordRequest, db: DbSession):
+    """Reset account password directly without requiring email verification."""
+    auth_service.reset_password(db, payload.email, payload.new_password)
+    return {"message": "Password updated successfully. You can now log in with your new password."}
 
 
 @router.post("/token", response_model=TokenResponse)

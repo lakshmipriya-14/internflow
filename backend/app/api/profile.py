@@ -8,17 +8,26 @@ from app.schemas.profile import ProfileResponse, ProfileUpdate, ResumeParseReque
 from app.services import profile_service, ai_service
 
 router = APIRouter(prefix="/profile", tags=["Student Profile"])
-MAX_RESUME_SIZE = 5 * 1024 * 1024
+MAX_RESUME_SIZE = 10 * 1024 * 1024
 
 
 def _extract_resume_text(filename: str, content: bytes) -> str:
     suffix = filename.lower().rsplit(".", 1)[-1] if "." in filename else ""
     try:
         if suffix == "pdf":
-            text = "\n".join(page.extract_text() or "" for page in PdfReader(BytesIO(content)).pages)
+            reader = PdfReader(BytesIO(content), strict=False)
+            extracted_pages = []
+            for page in reader.pages:
+                try:
+                    p_text = page.extract_text()
+                    if p_text:
+                        extracted_pages.append(p_text.strip())
+                except Exception:
+                    continue
+            text = "\n\n".join(extracted_pages)
         elif suffix == "docx":
             document = Document(BytesIO(content))
-            parts = [paragraph.text for paragraph in document.paragraphs]
+            parts = [paragraph.text.strip() for paragraph in document.paragraphs if paragraph.text.strip()]
             parts.extend(
                 " | ".join(cell.text.strip() for cell in row.cells if cell.text.strip())
                 for table in document.tables
@@ -26,16 +35,37 @@ def _extract_resume_text(filename: str, content: bytes) -> str:
             )
             text = "\n".join(parts)
         elif suffix in {"txt", "md"}:
-            text = content.decode("utf-8-sig")
+            for encoding in ("utf-8-sig", "utf-8", "latin-1", "cp1252"):
+                try:
+                    text = content.decode(encoding)
+                    break
+                except UnicodeDecodeError:
+                    continue
+            else:
+                text = content.decode("utf-8", errors="replace")
+        elif suffix == "doc":
+            raise HTTPException(
+                status_code=415,
+                detail="Legacy .doc format is not supported. Please save your file as .docx or .pdf, or paste the text directly."
+            )
         else:
-            raise HTTPException(status_code=415, detail="Upload a PDF, DOCX, TXT, or Markdown resume.")
+            raise HTTPException(
+                status_code=415,
+                detail="Unsupported format. Upload a PDF, DOCX, TXT, or Markdown resume."
+            )
     except HTTPException:
         raise
     except Exception as exc:
-        raise HTTPException(status_code=400, detail="Could not read this resume file. Check that it is a valid, non-password-protected document.") from exc
+        raise HTTPException(
+            status_code=400,
+            detail="Could not read this resume file. Ensure it is a valid, uncorrupted document."
+        ) from exc
 
     if not text.strip():
-        raise HTTPException(status_code=400, detail="No readable text was found. Try a text-based PDF or paste the resume text.")
+        raise HTTPException(
+            status_code=400,
+            detail="No readable text was found in this file. If this is a scanned/image PDF, please export it with selectable text or copy-paste the text directly."
+        )
     if len(text) > 100_000:
         raise HTTPException(status_code=413, detail="Extracted resume text must be 100,000 characters or fewer.")
     return text.strip()
@@ -43,7 +73,7 @@ def _extract_resume_text(filename: str, content: bytes) -> str:
 
 def _save_parsed_resume(db, user_id: int, resume_text: str):
     result = ai_service.parse_resume_text(resume_text)
-    profile_service.update_profile(
+    updated_profile = profile_service.update_profile(
         db,
         user_id,
         ProfileUpdate(
@@ -53,7 +83,7 @@ def _save_parsed_resume(db, user_id: int, resume_text: str):
             target_roles=", ".join(result["suggested_roles"]) or None
         )
     )
-    return result
+    return result, updated_profile
 
 
 @router.get("", response_model=ProfileResponse)
@@ -73,7 +103,8 @@ def parse_resume(payload: ResumeParseRequest, current_user: CurrentUser, db: DbS
     """Parse resume text and automatically extract skills and suggested bio/roles."""
     if not payload.resume_text.strip():
         raise HTTPException(status_code=400, detail="Resume text cannot be empty.")
-    return _save_parsed_resume(db, current_user.id, payload.resume_text.strip())
+    result, _ = _save_parsed_resume(db, current_user.id, payload.resume_text.strip())
+    return result
 
 
 @router.post("/upload-resume")
@@ -81,7 +112,11 @@ async def upload_resume(current_user: CurrentUser, db: DbSession, file: UploadFi
     """Extract, parse, and save a user's uploaded PDF, DOCX, or text resume."""
     content = await file.read(MAX_RESUME_SIZE + 1)
     if len(content) > MAX_RESUME_SIZE:
-        raise HTTPException(status_code=413, detail="Resume file must be 5 MB or smaller.")
+        raise HTTPException(status_code=413, detail="Resume file must be 10 MB or smaller.")
     resume_text = _extract_resume_text(file.filename or "", content)
-    result = _save_parsed_resume(db, current_user.id, resume_text)
-    return {**result, "resume_text": resume_text}
+    result, updated_profile = _save_parsed_resume(db, current_user.id, resume_text)
+    return {
+        **result,
+        "resume_text": resume_text,
+        "profile": ProfileResponse.model_validate(updated_profile),
+    }

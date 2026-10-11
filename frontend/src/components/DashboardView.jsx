@@ -127,7 +127,7 @@ export function DashboardView({ analytics, profile, onNavigate }) {
           </h3>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
             <div
-              onClick={() => onNavigate("resume")}
+              onClick={() => onNavigate("profile", "resume")}
               className="glass-panel"
               style={{
                 padding: "20px",
@@ -139,7 +139,7 @@ export function DashboardView({ analytics, profile, onNavigate }) {
               <FileText size={24} color="var(--primary-purple)" style={{ marginBottom: "12px" }} />
               <h4 style={{ fontSize: "1.05rem", fontWeight: "600" }}>Resume & Skill Parser</h4>
               <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginTop: "4px" }}>
-                Extract technical skills and generate professional bio summary automatically.
+                Upload resume or extract technical skills to personalize AI matching.
               </p>
             </div>
 
@@ -215,6 +215,23 @@ export function DashboardView({ analytics, profile, onNavigate }) {
                 <span>{item.label}</span>
               </div>
             ))}
+          </div>
+
+          <div style={{ display: "flex", gap: "8px", marginTop: "20px" }}>
+            <button
+              onClick={() => onNavigate("profile", "resume")}
+              className="btn-cyan"
+              style={{ fontSize: "0.8rem", padding: "8px 12px", flex: 1, justifyContent: "center" }}
+            >
+              Update Resume
+            </button>
+            <button
+              onClick={() => onNavigate("profile", "details")}
+              className="btn-secondary"
+              style={{ fontSize: "0.8rem", padding: "8px 12px", flex: 1, justifyContent: "center" }}
+            >
+              Edit Profile
+            </button>
           </div>
         </div>
       </div>

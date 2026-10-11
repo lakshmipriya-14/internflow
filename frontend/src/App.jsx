@@ -139,6 +139,17 @@ export default function App() {
     }
   }, [theme]);
 
+  const [profileSection, setProfileSection] = useState("details");
+
+  const handleNavigate = (tab, section = "details") => {
+    if (tab === "profile" || tab === "resume") {
+      setActiveTab("profile");
+      setProfileSection(section);
+    } else {
+      setActiveTab(tab);
+    }
+  };
+
   const handleLogout = () => {
     setToken(null);
     setUser(null);
@@ -151,6 +162,7 @@ export default function App() {
 
   const handleAuthSuccess = async (userData) => {
     setUser(userData);
+    setActiveTab("dashboard");
     await loadUserData();
   };
 
@@ -189,8 +201,6 @@ export default function App() {
     setApplications(applications.filter((a) => a.id !== id));
     await api.deleteApplication(id);
   };
-
-  const profileReady = Boolean(profile?.resume_text?.trim() && profile?.skills?.trim());
 
   if (!authReady) {
     return (
@@ -241,7 +251,7 @@ export default function App() {
       {/* Top Header Navigation */}
       <Header
         activeTab={activeTab}
-        setActiveTab={setActiveTab}
+        setActiveTab={(tab) => handleNavigate(tab, "details")}
         user={user}
         onOpenAuth={() => {}}
         onLogout={handleLogout}
@@ -251,20 +261,11 @@ export default function App() {
 
       {/* Main View Area */}
       <main style={{ maxWidth: "1400px", width: "100%", margin: "0 auto", padding: "32px 24px", flex: 1 }}>
-        {!profileReady ? (
-          <ResumeStudioView
-            profile={profile}
-            onUpdateProfile={handleUpdateProfile}
-            onboarding
-            onComplete={() => setActiveTab("dashboard")}
-          />
-        ) : (
-          <>
         {activeTab === "dashboard" && (
           <DashboardView
             analytics={analytics}
             profile={profile}
-            onNavigate={setActiveTab}
+            onNavigate={handleNavigate}
           />
         )}
 
@@ -284,9 +285,12 @@ export default function App() {
           />
         )}
 
-        {activeTab === "resume" && (
+        {(activeTab === "profile" || activeTab === "resume") && (
           <ResumeStudioView
+            key={`${profile?.id || "p"}-${profileSection}`}
             profile={profile}
+            user={user}
+            initialSection={profileSection}
             onUpdateProfile={handleUpdateProfile}
           />
         )}
@@ -294,14 +298,12 @@ export default function App() {
         {activeTab === "generator" && (
           <GeneratorStudioView
             profile={profile}
-            onNavigate={setActiveTab}
+            onNavigate={handleNavigate}
           />
         )}
 
         {activeTab === "interview" && (
           <InterviewPrepView />
-        )}
-          </>
         )}
       </main>
 

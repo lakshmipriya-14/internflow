@@ -45,7 +45,11 @@ async function request(endpoint, options = {}) {
     return { data, status: res.status };
   } catch (err) {
     console.warn("Backend API offline or unreachable, using client state fallback:", err);
-    return { error: "network_error", message: err.message };
+    return {
+      error: "Backend server is offline or unreachable (http://localhost:8000). Please ensure the backend is running.",
+      message: err.message,
+      isOffline: true
+    };
   }
 }
 
@@ -53,6 +57,7 @@ export const api = {
   // Auth
   register: (payload) => request("/auth/register", { method: "POST", body: JSON.stringify(payload) }),
   login: (payload) => request("/auth/login", { method: "POST", body: JSON.stringify(payload) }),
+  forgotPassword: (payload) => request("/auth/forgot-password", { method: "POST", body: JSON.stringify(payload) }),
   getMe: () => request("/auth/me"),
 
   // Profile
